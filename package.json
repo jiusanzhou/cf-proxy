@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "wrangler pages dev --config wrangler.local.toml",
-    "deploy": "wrangler pages deploy . --project-name wuma-edge --commit-dirty=true"
+    "deploy": "wrangler pages deploy . --project-name notes-edge --commit-dirty=true"
   },
   "devDependencies": {
     "wrangler": "^4"

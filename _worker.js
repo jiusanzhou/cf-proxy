@@ -1,5 +1,5 @@
 /**
- * Edge Worker — HTTP proxy + dual WS tunnel + admin panel
+ * Edge Worker — HTTP proxy + dual WS tunnel + panel
  *
  * Env vars:
  *   UUID        — tunnel user id (uuidv4)
