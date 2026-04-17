@@ -6,8 +6,8 @@ Cloudflare Worker 三模代理 — HTTP 反向代理 + VLESS 隧道 + Trojan 隧
 
 ### HTTP 反向代理
 ```
-https://cf-proxy.wuma.workers.dev/https://httpbin.org/get
-https://cf-proxy.wuma.workers.dev/?url=https://httpbin.org/get
+https://<your-worker>/https://httpbin.org/get
+https://<your-worker>/?url=https://httpbin.org/get
 ```
 
 ### VLESS over WebSocket
@@ -43,7 +43,7 @@ npx wrangler deploy
 ### VLESS
 ```
 协议: vless
-地址: cf-proxy.wuma.workers.dev
+地址: <your-worker>
 端口: 443
 UUID: <你的 UUID>
 传输: ws
@@ -54,7 +54,7 @@ Path: /
 ### Trojan
 ```
 协议: trojan
-地址: cf-proxy.wuma.workers.dev
+地址: <your-worker>
 端口: 443
 密码: <你的 UUID 或 TROJAN_PASS>
 传输: ws
