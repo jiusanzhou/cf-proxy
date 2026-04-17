@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CF Proxy Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--card:#141414;--border:#222;--text:#e0e0e0;--dim:#666;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--orange:#f59e0b}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,monospace;background:var(--bg);color:var(--text);min-height:100vh;padding:20px}
+.container{max-width:800px;margin:0 auto}
+h1{font-size:1.4em;font-weight:600;margin-bottom:24px;display:flex;align-items:center;gap:10px}
+h1 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
+.card h2{font-size:1em;font-weight:500;color:var(--dim);margin-bottom:14px;text-transform:uppercase;letter-spacing:1px;font-size:0.75em}
+.uri-box{background:#0d0d0d;border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-family:monospace;font-size:0.82em;word-break:break-all;line-height:1.6;color:var(--accent);position:relative;margin-bottom:10px}
+.uri-box .tag{position:absolute;top:8px;right:8px;font-size:0.65em;padding:2px 8px;border-radius:3px;font-weight:600;text-transform:uppercase;color:#fff}
+.tag-vless{background:#6366f1}
+.tag-trojan{background:#f59e0b;color:#000}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:0.82em;transition:all .15s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{opacity:.85}
+.btn-sm{padding:5px 12px;font-size:0.75em}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:0.75em;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.field input{width:100%;padding:10px 12px;background:#0d0d0d;border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:monospace;font-size:0.85em;outline:none}
+.field input:focus{border-color:var(--accent)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{text-align:center;padding:16px}
+.stat .val{font-size:1.8em;font-weight:700;color:var(--accent)}
+.stat .lbl{font-size:0.7em;color:var(--dim);margin-top:4px;text-transform:uppercase}
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;background:var(--green);color:#fff;font-size:0.85em;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}
+.toast.err{background:var(--red)}
+.qr-wrap{text-align:center;padding:16px;background:#fff;border-radius:8px;display:inline-block;margin-top:10px}
+.login-wrap{display:flex;justify-content:center;align-items:center;min-height:80vh}
+.login-box{width:320px}
+.login-box h1{justify-content:center;margin-bottom:32px}
+.hidden{display:none}
+.tab-bar{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border)}
+.tab{padding:10px 20px;cursor:pointer;color:var(--dim);font-size:0.85em;border-bottom:2px solid transparent;transition:all .15s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--text)}
+.section{display:none}.section.active{display:block}
+.conn-log{font-family:monospace;font-size:0.78em;line-height:1.8}
+.conn-log .row{display:flex;gap:12px;padding:4px 0;border-bottom:1px solid #1a1a1a}
+.conn-log .time{color:var(--dim);min-width:80px}
+.conn-log .proto{min-width:50px;font-weight:600}
+.conn-log .proto.vless{color:#6366f1}
+.conn-log .proto.trojan{color:var(--orange)}
+.conn-log .target{color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- 登录 -->
+<div id="loginView" class="login-wrap">
+  <div class="login-box">
+    <h1><span class="dot"></span> CF Proxy</h1>
+    <div class="card">
+      <div class="field">
+        <label>管理密码</label>
+        <input type="password" id="passwordInput" placeholder="输入密码" autofocus>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">登录</button>
+    </div>
+  </div>
+</div>
+
+<!-- 管理面板 -->
+<div id="adminView" class="container hidden">
+  <h1><span class="dot"></span> CF Proxy Admin</h1>
+
+  <div class="tab-bar">
+    <div class="tab active" data-tab="nodes">节点信息</div>
+    <div class="tab" data-tab="config">配置管理</div>
+    <div class="tab" data-tab="logs">连接日志</div>
+  </div>
+
+  <!-- 节点信息 -->
+  <div id="tab-nodes" class="section active">
+    <div class="card">
+      <h2>VLESS</h2>
+      <div class="uri-box" id="vlessUri"><span class="tag tag-vless">VLESS</span>加载中...</div>
+      <div class="btn-row">
+        <button class="btn btn-sm" onclick="copyUri('vless')">📋 复制 URI</button>
+        <button class="btn btn-sm" onclick="showQR('vless')">📱 二维码</button>
+      </div>
+      <div id="vlessQR" class="hidden"></div>
+    </div>
+
+    <div class="card">
+      <h2>Trojan</h2>
+      <div class="uri-box" id="trojanUri"><span class="tag tag-trojan">Trojan</span>加载中...</div>
+      <div class="btn-row">
+        <button class="btn btn-sm" onclick="copyUri('trojan')">📋 复制 URI</button>
+        <button class="btn btn-sm" onclick="showQR('trojan')">📱 二维码</button>
+      </div>
+      <div id="trojanQR" class="hidden"></div>
+    </div>
+
+    <div class="card">
+      <h2>订阅地址</h2>
+      <div class="uri-box" id="subUrl">加载中...</div>
+      <div class="btn-row">
+        <button class="btn btn-sm" onclick="copyEl('subUrl')">📋 复制</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配置管理 -->
+  <div id="tab-config" class="section">
+    <div class="card">
+      <h2>代理配置</h2>
+      <div class="field">
+        <label>UUID (VLESS)</label>
+        <input type="text" id="cfgUUID" placeholder="UUIDv4">
+      </div>
+      <div class="field">
+        <label>Trojan 密码 (留空复用 UUID)</label>
+        <input type="text" id="cfgTrojanPass" placeholder="可选">
+      </div>
+      <div class="field">
+        <label>Proxy IP</label>
+        <input type="text" id="cfgProxyIP" placeholder="可选，如 proxyip.example.com:443">
+      </div>
+      <div class="field">
+        <label>HTTP 代理鉴权 Token</label>
+        <input type="text" id="cfgAuthToken" placeholder="可选">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveConfig()">💾 保存配置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 连接日志 -->
+  <div id="tab-logs" class="section">
+    <div class="card">
+      <h2>最近连接</h2>
+      <div id="connLogs" class="conn-log">
+        <div style="color:var(--dim)">暂无日志</div>
+      </div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-sm" onclick="refreshLogs()">🔄 刷新</button>
+        <button class="btn btn-sm" onclick="clearLogs()">🗑️ 清空</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = '';
+let authToken = '';
+
+// Tab 切换
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// Enter 登录
+document.getElementById('passwordInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+async function doLogin() {
+  const pass = document.getElementById('passwordInput').value.trim();
+  if (!pass) return;
+  try {
+    const res = await fetch(API + '/admin/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass }),
+    });
+    const data = await res.json();
+    if (data.token) {
+      authToken = data.token;
+      sessionStorage.setItem('cf-proxy-token', authToken);
+      showAdmin();
+    } else {
+      toast('密码错误', true);
+    }
+  } catch (e) {
+    toast('登录失败: ' + e.message, true);
+  }
+}
+
+function showAdmin() {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('adminView').classList.remove('hidden');
+  loadNodeInfo();
+  loadConfig();
+  refreshLogs();
+}
+
+async function apiFetch(path, opts = {}) {
+  opts.headers = { ...opts.headers, 'X-Admin-Token': authToken };
+  const res = await fetch(API + path, opts);
+  if (res.status === 401) {
+    sessionStorage.removeItem('cf-proxy-token');
+    location.reload();
+    return null;
+  }
+  return res.json();
+}
+
+async function loadNodeInfo() {
+  const data = await apiFetch('/admin/api/info');
+  if (!data) return;
+  document.getElementById('vlessUri').innerHTML = `<span class="tag tag-vless">VLESS</span>${escHtml(data.vless_uri)}`;
+  document.getElementById('trojanUri').innerHTML = `<span class="tag tag-trojan">Trojan</span>${escHtml(data.trojan_uri)}`;
+  document.getElementById('subUrl').textContent = data.sub_url;
+}
+
+async function loadConfig() {
+  const data = await apiFetch('/admin/api/config');
+  if (!data) return;
+  document.getElementById('cfgUUID').value = data.uuid || '';
+  document.getElementById('cfgTrojanPass').value = data.trojan_pass || '';
+  document.getElementById('cfgProxyIP').value = data.proxy_ip || '';
+  document.getElementById('cfgAuthToken').value = data.auth_token || '';
+}
+
+async function saveConfig() {
+  const cfg = {
+    uuid: document.getElementById('cfgUUID').value.trim(),
+    trojan_pass: document.getElementById('cfgTrojanPass').value.trim(),
+    proxy_ip: document.getElementById('cfgProxyIP').value.trim(),
+    auth_token: document.getElementById('cfgAuthToken').value.trim(),
+  };
+  const data = await apiFetch('/admin/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cfg),
+  });
+  if (data?.success) {
+    toast('配置已保存');
+    loadNodeInfo();
+  } else {
+    toast('保存失败', true);
+  }
+}
+
+async function refreshLogs() {
+  const data = await apiFetch('/admin/api/logs');
+  if (!data) return;
+  const container = document.getElementById('connLogs');
+  if (!data.logs || data.logs.length === 0) {
+    container.innerHTML = '<div style="color:var(--dim)">暂无日志</div>';
+    return;
+  }
+  container.innerHTML = data.logs.map(l =>
+    `<div class="row"><span class="time">${l.time}</span><span class="proto ${l.protocol}">${l.protocol}</span><span class="target">${escHtml(l.target)}</span></div>`
+  ).join('');
+}
+
+async function clearLogs() {
+  await apiFetch('/admin/api/logs', { method: 'DELETE' });
+  toast('日志已清空');
+  refreshLogs();
+}
+
+function copyUri(type) {
+  const el = document.getElementById(type + 'Uri');
+  const text = el.textContent.replace(/^(VLESS|Trojan)/, '').trim();
+  navigator.clipboard.writeText(text);
+  toast('已复制');
+}
+
+function copyEl(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text);
+  toast('已复制');
+}
+
+function showQR(type) {
+  const wrap = document.getElementById(type + 'QR');
+  if (!wrap.classList.contains('hidden')) {
+    wrap.classList.add('hidden');
+    return;
+  }
+  const el = document.getElementById(type + 'Uri');
+  const uri = el.textContent.replace(/^(VLESS|Trojan)/, '').trim();
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}`;
+  wrap.innerHTML = `<div class="qr-wrap"><img src="${qrUrl}" alt="QR"></div>`;
+  wrap.classList.remove('hidden');
+}
+
+function toast(msg, err = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (err ? ' err' : '');
+  setTimeout(() => el.className = 'toast', 2000);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// 自动登录
+const saved = sessionStorage.getItem('cf-proxy-token');
+if (saved) {
+  authToken = saved;
+  showAdmin();
+}
+</script>
+</body>
+</html>
