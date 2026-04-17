@@ -1,69 +1,54 @@
 # cf-proxy
 
-Cloudflare Worker 三模代理 — HTTP 反向代理 + VLESS 隧道 + Trojan 隧道。
+Minimal Cloudflare Pages worker with WS tunnels behind a path + token gate.
 
-## 功能
+## Highlights
 
-### HTTP 反向代理
+- WebSocket tunnel requires **both** `WS_PATH` and `WS_TOKEN`; mismatched requests get a generic 404 (no `101 Switching Protocols`, no auth error).
+- Panel lives at `ADMIN_PATH` (random, no "admin" string).
+- Subscription feed at `SUB_PATH`, also gated by `?k=WS_TOKEN`.
+- Root path returns a benign HTML home; no service fingerprints.
+- HTTP proxy requires `AUTH_TOKEN` — refuses to act as open proxy otherwise.
+
+## Deploy
+
+1. Put real config in `wrangler.local.toml` (see template, gitignored).
+2. `.dev.vars` holds local/dev secrets (gitignored).
+3. Deploy with `npm run deploy`.
+
+Secrets you should set on the live project:
+
+| Name | Required | Notes |
+|---|---|---|
+| `UUID` | yes | UUIDv4, for channel A user id + channel B default password |
+| `TROJAN_PASS` | no | separate channel B password |
+| `ADMIN` | no | panel password, fallback to `UUID` |
+| `AUTH_TOKEN` | yes (for HTTP proxy) | bearer token; without it HTTP proxy is disabled |
+| `PROXY_IP` | no | upstream relay `host` or `host:port` |
+| `WS_PATH` | yes | random WS entry path, e.g. `/_ab12cd34...` |
+| `WS_TOKEN` | yes | random query token, used as `?k=<WS_TOKEN>` |
+| `ADMIN_PATH` | no | panel entry, default `/_m` — **override it** |
+| `SUB_PATH` | no | feed entry, default `/_c` — **override it** |
+| `HOME_HTML` | no | custom root HTML |
+
+`wrangler pages secret put <NAME> --project-name <project>` for each.
+
+## Client config
+
+Copy from the panel (`ADMIN_PATH`) after login. Both channels use:
+- transport: ws, tls, sni = host
+- path: `WS_PATH?k=WS_TOKEN` (feed/panel output includes it)
+
+## HTTP proxy
+
 ```
-https://<your-worker>/https://httpbin.org/get
-https://<your-worker>/?url=https://httpbin.org/get
-```
-
-### VLESS over WebSocket
-### Trojan over WebSocket
-
-协议自动检测：同一个 WS 端点，首包匹配 Trojan SHA224 哈希 → Trojan，否则 → VLESS。
-
-## 部署
-
-```bash
-npm install
-
-# 设置 UUID (VLESS 用户验证 + Trojan 默认密码)
-npx wrangler secret put UUID
-
-# 可选：设置独立的 Trojan 密码（默认复用 UUID）
-npx wrangler secret put TROJAN_PASS
-
-npx wrangler deploy
-```
-
-## 环境变量
-
-| 变量 | 必填 | 说明 |
-|------|------|------|
-| `UUID` | 隧道必填 | UUIDv4 格式，VLESS 认证 + Trojan 默认密码 |
-| `TROJAN_PASS` | 否 | 独立 Trojan 密码（默认复用 UUID） |
-| `AUTH_TOKEN` | 否 | HTTP 代理 Bearer token 鉴权 |
-| `PROXY_IP` | 否 | ProxyIP 中转 |
-
-## 客户端配置
-
-### VLESS
-```
-协议: vless
-地址: <your-worker>
-端口: 443
-UUID: <你的 UUID>
-传输: ws
-TLS: tls
-Path: /
+GET https://<host>/?url=https://httpbin.org/get
+Authorization: Bearer <AUTH_TOKEN>
 ```
 
-### Trojan
-```
-协议: trojan
-地址: <your-worker>
-端口: 443
-密码: <你的 UUID 或 TROJAN_PASS>
-传输: ws
-TLS: tls
-Path: /
-```
+or
 
-## 原理
-
-- HTTP 代理：Worker `fetch()` 转发
-- VLESS/Trojan：WebSocket 入站 → 首包协议自动检测 → `cloudflare:sockets` TCP 出站 → 双向 pipe
-- Trojan 认证：密码 SHA224 hex 比对（56 bytes + CRLF）
+```
+GET https://<host>/https://httpbin.org/get
+Authorization: Bearer <AUTH_TOKEN>
+```
