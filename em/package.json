@@ -1,0 +1,6 @@
+{
+  "name": "em-proxy",
+  "version": "1.0.0",
+  "description": "Vercel HKG serverless proxy for EastMoney/SSE/SZSE APIs",
+  "private": true
+}
